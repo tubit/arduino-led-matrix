@@ -1,6 +1,9 @@
 #include <Arduino.h>
 #include <WiFi.h>
+/*
 #include <WiFiMulti.h>
+*/
+#include <WiFiManager.h>          //https://github.com/tzapu/WiFiManager WiFi Configuration Magic
 
 #include <MD_MAX72xx.h>
 #include <SPI.h>
@@ -42,10 +45,13 @@ bool newMessageAvailable = true;
 // SPI hardware interface
 MD_MAX72XX mx = MD_MAX72XX(HARDWARE_TYPE, CS_PIN, MAX_DEVICES);
 
+/*
 WiFiMulti wifiMulti;
 
 const char* ssid = "konert.me";
 const char* password = "md020413jk14";
+*/
+WiFiManager wifiManager;
 
 WebServer server(80);
 
@@ -107,6 +113,7 @@ void setup() {
   Serial.begin(115200);
   Serial.println("\nConnecting");
 
+/*
   wifiMulti.addAP(ssid, password);
 
   Serial.println("Connecting Wifi ");
@@ -127,7 +134,10 @@ void setup() {
     delay(1000);
     ESP.restart();
   }
+*/
+  wifiManager.autoConnect("LED Matrix");
 
+  
   if (!MDNS.begin(MDNS_NAME))
   {
     Serial.println("Error setting up MDNS responder!");
@@ -173,7 +183,7 @@ void setup() {
 }
 
 void loop() {
-  if (wifiMulti.run() == WL_CONNECTED) {
+  //if (wifiMulti.run() == WL_CONNECTED) {
     server.handleClient();
 
     // print on MX
@@ -183,9 +193,9 @@ void loop() {
       scrollText(message);
       newMessageAvailable = false;
     }
-  }
+  /*}
   else {
     Serial.println("WiFi not connected!");
     delay(1000);
-  }
+  }*/
 }
