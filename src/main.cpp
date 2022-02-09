@@ -1,24 +1,30 @@
 #include <Arduino.h>
-#include <WiFi.h>
-/*
-#include <WiFiMulti.h>
-*/
-#include <WiFiManager.h>          //https://github.com/tzapu/WiFiManager WiFi Configuration Magic
-
-#include <MD_MAX72xx.h>
-
-#include <WebServer.h>
-#include <ESPmDNS.h>
+#include <WiFiManager.h>          // https://github.com/tzapu/WiFiManager WiFi Configuration Magic
 
 #include <SPI.h>
 #include <FS.h>
-#include <SPIFFS.h>
 
 #include "utf8ascii.h"
+
+// We need to include a different set of libraries depending on our platform
+#ifdef ARDUINO_ESP32_DEV
+  #include <WiFi.h>
+  #include <WebServer.h>
+  #include <ESPmDNS.h>
+  #define WEBSERVER WebServer
+  #include <SPIFFS.h>
+#endif
+#ifdef ARDUINO_ESP8266_WEMOS_D1MINILITE
+  #include <ESP8266WiFi.h>
+  #include <ESP8266WebServer.h>
+  #include <ESP8266mDNS.h>
+  #define WEBSERVER ESP8266WebServer
+#endif
 
 // Name to announce via mDNS
 #define MDNS_NAME "led1"
 
+#include <MD_MAX72xx.h>
 #define BUF_SIZE      75  // text buffer size
 #define CHAR_SPACING  1   // pixels between characters
 
@@ -26,33 +32,31 @@
 #define HARDWARE_TYPE MD_MAX72XX::FC16_HW
 #define MAX_DEVICES 4
 
-#define CLK_PIN   18  // or SCK
-#define DATA_PIN  23  // or MOSI
-#define CS_PIN     5  // or 
+// depending on the target platform, I used different output ports
+#ifdef ARDUINO_ESP32_DEV
+  #define CLK_PIN   18  // CLK  or GPIO18
+  #define DATA_PIN  23  // MOSI or GPIO23
+  #define CS_PIN     5  // SS   or GPIO5
+#endif
+#ifdef ARDUINO_ESP8266_WEMOS_D1MINILITE
+  #define CLK_PIN   14 // CLK  or IO14 or D5
+  #define DATA_PIN  13 // MOSI or IO13 or D7
+  #define CS_PIN    15 // SS   or IO15 or D8 
+#endif
 
 #define DELAYTIME 100 // in milliseconds
 #define CHAR_SPACING  1 // pixels between characters
 
-// Global message buffers shared by Serial and Scrolling functions
 #define BUF_SIZE  75
 char message[BUF_SIZE] = "Julian";
 bool newMessageAvailable = true;
 
-// how many clients should be able to telnet to this ESP32
-#define MAX_SRV_CLIENTS 1
-
 // SPI hardware interface
 MD_MAX72XX mx = MD_MAX72XX(HARDWARE_TYPE, CS_PIN, MAX_DEVICES);
 
-/*
-WiFiMulti wifiMulti;
-
-const char* ssid = "konert.me";
-const char* password = "md020413jk14";
-*/
 WiFiManager wifiManager;
 
-WebServer server(80);
+WEBSERVER server(80);
 
 void handleRoot() {
   if (server.method() == HTTP_POST)
@@ -112,28 +116,7 @@ void setup() {
   Serial.begin(115200);
   Serial.println("\nConnecting");
 
-/*
-  wifiMulti.addAP(ssid, password);
-
-  Serial.println("Connecting Wifi ");
-  for (int loops = 10; loops > 0; loops--) {
-    if (wifiMulti.run() == WL_CONNECTED) {
-      Serial.println();
-      Serial.println("WiFi connected");
-      Serial.print("IP address: "); Serial.println(WiFi.localIP());
-      break;
-    }
-    else {
-      Serial.println(loops);
-      delay(1000);
-    }
-  }
-  if (wifiMulti.run() != WL_CONNECTED) {
-    Serial.println("WiFi connect failed");
-    delay(1000);
-    ESP.restart();
-  }
-*/
+  WiFi.setHostname(MDNS_NAME);
   wifiManager.autoConnect("LED Matrix");
 
   
