@@ -67,8 +67,7 @@ WEBSERVER server(80);
 void handleRoot() {
   if (server.method() == HTTP_POST) {
     for (uint8_t i = 0; i < server.args(); i++) {
-      if (server.argName(i) == "message")
-      {
+      if (server.argName(i) == "message") {
         String m = server.arg(i);
         m += "            ";
         m.toCharArray(message, BUF_SIZE);
@@ -96,8 +95,7 @@ void handleNotFound() {
   server.send(404, "text/plain", message);
 }
 
-void scrollText(const char *p)
-{
+void scrollText(const char *p) {
   uint8_t charWidth;
   uint8_t cBuf[8];  // this should be ok for all built-in fonts
 
