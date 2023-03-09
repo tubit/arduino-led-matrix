@@ -11,25 +11,10 @@
 #include "utf8ascii.h"
 #include "effects.h"
 
-// We need to include a different set of libraries depending on our platform
-#ifdef ARDUINO_ESP32_DEV
-  #include <WiFi.h>
-  #include <WebServer.h>
-  #include <ESPmDNS.h>
-  #define WEBSERVER WebServer
-  #include <SPIFFS.h>
-  #include <ArduinoOTA.h>
-#endif
-#ifdef ARDUINO_ESP8266_WEMOS_D1MINILITE
-  #include <ESP8266WiFi.h>
-  #include <ESP8266WebServer.h>
-  #include <ESP8266mDNS.h>
-  #define WEBSERVER ESP8266WebServer
-#endif
-
-// Name to announce via mDNS
-// TODO: Can we make this configurable via WiFiManager?
-//#define MDNS_NAME "led1"
+#include <ESP8266WiFi.h>
+#include <ESP8266WebServer.h>
+#include <ESP8266mDNS.h>
+#define WEBSERVER ESP8266WebServer
 
 /* LED Matrix controller & settings */
 #include <MD_MAX72xx.h>
@@ -40,19 +25,12 @@
 #define HARDWARE_TYPE MD_MAX72XX::FC16_HW
 #define MAX_DEVICES 4
 
-// depending on the target platform, I used different output ports
-#ifdef ARDUINO_ESP32_DEV
-  #define CLK_PIN   18  // CLK  or GPIO18
-  #define DATA_PIN  23  // MOSI or GPIO23
-  #define CS_PIN     5  // SS   or GPIO5
-#endif
-#ifdef ARDUINO_ESP8266_WEMOS_D1MINILITE
-  #define CLK_PIN   14 // CLK  or IO14 or D5
-  #define DATA_PIN  13 // MOSI or IO13 or D7
-  #define CS_PIN    15 // SS   or IO15 or D8 
-#endif
+// Output PINs for the MAX72xx matrix display
+#define CLK_PIN   14 // CLK  or IO14 or D5
+#define DATA_PIN  13 // MOSI or IO13 or D7
+#define CS_PIN    15 // SS   or IO15 or D8 
 
-#define DELAYTIME 100 // in milliseconds
+#define DELAYTIME 100   // in milliseconds
 #define CHAR_SPACING  1 // pixels between characters
 
 // for message scrolling
@@ -77,6 +55,7 @@ WiFiManager wifiManager;
 
 WEBSERVER server(80);
 
+// poor mans http api
 void handleRoot() {
   if (server.method() == HTTP_POST) {
     for (uint8_t i = 0; i < server.args(); i++) {
@@ -133,12 +112,12 @@ void scrollText(const char *p) {
   }
 }
 
-void printText(uint8_t modStart, uint8_t modEnd, char *pMsg) {
 // Print the text string to the LED matrix modules specified.
 // Message area is padded with blank columns after printing.
+void printText(uint8_t modStart, uint8_t modEnd, char *pMsg) {
   uint8_t   state = 0;
-  uint8_t   curLen;
-  uint16_t  showLen;
+  uint8_t   curLen = 0;
+  uint16_t  showLen = 0;
   uint8_t   cBuf[8];
   int16_t   col = ((modEnd + 1) * COL_SIZE) - 1;
 
@@ -159,7 +138,7 @@ void printText(uint8_t modStart, uint8_t modEnd, char *pMsg) {
         showLen = mx.getChar(*pMsg++, sizeof(cBuf)/sizeof(cBuf[0]), cBuf);
         curLen = 0;
         state++;
-        // !! deliberately fall through to next state to start displaying
+        // no break !! deliberately fall through to next state to start displaying
 
       case 1: // display the next part of the character
         mx.setColumn(col--, cBuf[curLen++]);
@@ -197,7 +176,6 @@ void setup() {
 
   //wifiManager.resetSettings();
 
-  //WiFi.setHostname(MDNS_NAME);
   bool wifi_connection = wifiManager.autoConnect();
 
  if (!wifi_connection) {
@@ -307,9 +285,9 @@ void loop() {
         case 4: stripe(&mx); break;
         case 5: spiral(&mx); break;
         case 6: rows(&mx); break;
+        case 7: columns(&mx); break;
         case 8: checkboard(&mx); break;
-        case 9: columns(&mx); break;
-        case 10: transformation1(&mx); break;
+        case 9: transformation1(&mx); break;
       }
 
       animation = 0;
@@ -329,6 +307,7 @@ void loop() {
       Serial.println(time_minute);
 
       String current_time = " ";
+      if (time_hour < 10) current_time += "0";
       current_time += (String)time_hour + ":";
       if (time_minute < 10) current_time += "0";
       current_time += (String)time_minute;
@@ -339,8 +318,7 @@ void loop() {
     }
 
     delay(1);
-  }
-  else {
+  } else {
     Serial.println("WiFi not connected!");
     delay(1000);
   }
