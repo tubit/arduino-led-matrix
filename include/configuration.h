@@ -1,9 +1,9 @@
 #ifndef CONFIGURATION_H
 #define CONFIGURATION_H
 
-#define VERSION "0.0.1"
-
 #include <Arduino.h>
+
+/* all for wifi and webserver */
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
 #include <ESP8266HTTPUpdateServer.h>
@@ -23,5 +23,27 @@ char* www_username = "admin";  // User account for the Web Interface
 char* www_password = "password";  // Password for the Web Interface
 
 String themeColor = "blue-grey"; // this can be changed later in the web interface.
+
+/* LED Matrix controller & settings */
+#include <MD_MAX72xx.h>
+#define BUF_SIZE      75  // text buffer size
+#define CHAR_SPACING  1   // pixels between characters
+
+// Define the number of devices we have in the chain and the hardware interface
+#define HARDWARE_TYPE MD_MAX72XX::FC16_HW
+#define MAX_DEVICES 4
+
+// Output PINs for the MAX72xx matrix display
+#define CLK_PIN   14 // CLK  or IO14 or D5
+#define DATA_PIN  13 // MOSI or IO13 or D7
+#define CS_PIN    15 // SS   or IO15 or D8 
+
+#define DELAYTIME 100   // in milliseconds
+#define CHAR_SPACING  1 // pixels between characters
+
+/* Time settings */
+#include <Time.h>
+const long gmt_offset_sec = 3600;
+const int  day_light_offset_sec = 3600;
 
 #endif
