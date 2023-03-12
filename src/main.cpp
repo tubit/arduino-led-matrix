@@ -22,7 +22,7 @@ void sendHeader();
 void sendFooter();
 
 void printText(uint8_t modStart, uint8_t modEnd, char *pMsg);
-void scrollText(const char *p);
+void scrollText(String text);
 /* end declare functions */
 
 ESP8266WebServer server(WEBSERVER_PORT);
@@ -31,6 +31,7 @@ int8_t hold_seconds = 0;
 
 // for message scrolling
 char message[BUF_SIZE] = "Hello World";
+String new_message = "Hello World";
 bool newMessageAvailable = true;
 bool loop_message = true;
 
@@ -82,7 +83,7 @@ void setup() {
 
   // reset WiFi settings, blink forever
   if (digitalRead(buttonWifiReset)) {
-    //TODO: scrollMessage("WiFi settings reset");
+    scrollText("WiFi settings reset");
     Serial.println("WiFi reset button pressed while booting. Reset WiFi settings.");
     wifiManager.resetSettings();
     Serial.print("WiFi settings removed. Release button for reboot.");
@@ -135,16 +136,12 @@ void setup() {
     // Print the IP address
     String webAddress = "http://" + WiFi.localIP().toString() + ":" + String(WEBSERVER_PORT) + "/";
     Serial.println("Open URL: " + webAddress);
-    //TODO: scrollMessage(" v" + String(VERSION) + "  IP: " + WiFi.localIP().toString() + "  ");
   } else {
     Serial.println("Web Interface is Disabled");
-    //TODO: scrollMessage("Web Interface is Disabled");
   }
 
   // Scroll your own hostname after first boot.
-  String hn = WiFi.getHostname();
-  hn += "            ";
-  hn.toCharArray(message, BUF_SIZE);
+  new_message = WiFi.getHostname();
   newMessageAvailable = true;
 
   // set timezone
@@ -177,9 +174,9 @@ void loop() {
 //  }
 
   if (newMessageAvailable) {
-    Serial.println("Processing message: " + String(message));
+    Serial.println("Processing message: " + String(new_message));
     mx.control(MD_MAX72XX::INTENSITY, 2);
-    scrollText(message);
+    scrollText(new_message);
     newMessageAvailable = false;
     update_matrix = true;
   }
@@ -231,18 +228,18 @@ void configModeCallback (WiFiManager *myWiFiManager) {
   Serial.println("Please connect to AP");
   Serial.println(myWiFiManager->getConfigPortalSSID());
   Serial.println("To setup Wifi Configuration");
-  //TODO: scrollMessage("Please Connect to AP: " + String(myWiFiManager->getConfigPortalSSID()));
+  scrollText("Please Connect to AP: " + String(myWiFiManager->getConfigPortalSSID()));
   //TODO: centerPrint("wifi");
 }
 
-void scrollText(const char *p) {
+void scrollText(String text) {
   uint8_t charWidth;
   uint8_t cBuf[8];  // this should be ok for all built-in fonts
 
   mx.clear();
 
-  while (*p != '\0') {
-    charWidth = mx.getChar(utf8ascii(*p++), sizeof(cBuf) / sizeof(cBuf[0]), cBuf);
+  for (unsigned int idx = 0; idx <= text.length(); idx++) {
+    charWidth = mx.getChar(utf8ascii(text.charAt(idx)), sizeof(cBuf) / sizeof(cBuf[0]), cBuf);
 
     for (uint8_t i = 0; i <= charWidth; i++) { // allow space between characters 
       mx.transform(MD_MAX72XX::TSL);
@@ -251,11 +248,19 @@ void scrollText(const char *p) {
       delay(DELAYTIME);
     }
 
-    // handle http requests during scrolling
-    // TODO: currently this overwrites the message.. We need to copy the text before scrolling and let it finish.
-      if (WEBSERVER_ENABLED) {
-        server.handleClient();
-      }
+    if (WEBSERVER_ENABLED) {
+      server.handleClient();
+    }
+  }
+
+  // fill the screen with blank to scroll the message out of the screen
+  for (unsigned int idx = 0; idx < MAX_DEVICES * 8; idx++) {
+    mx.transform(MD_MAX72XX::TSL);
+    delay(DELAYTIME);
+
+    if (idx % 8 == 0 && WEBSERVER_ENABLED) {
+      server.handleClient();
+    }
   }
 }
 
@@ -351,9 +356,7 @@ void handleRoot() {
   if (server.method() == HTTP_POST) {
     for (uint8_t i = 0; i < server.args(); i++) {
       if (server.argName(i) == "message") {
-        String m = server.arg(i);
-        m += "            ";
-        m.toCharArray(message, BUF_SIZE);
+        new_message = server.arg(i);
         newMessageAvailable = true;
       } else if (server.argName(i) == "animation") {
         animation = server.arg(i).toInt();
