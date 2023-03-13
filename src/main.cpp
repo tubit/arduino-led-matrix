@@ -254,11 +254,11 @@ void scrollText(String text) {
   }
 
   // fill the screen with blank to scroll the message out of the screen
-  for (unsigned int idx = 0; idx < MAX_DEVICES * 8; idx++) {
+  for (unsigned int idx = 0; idx < MAX_DEVICES * COL_SIZE; idx++) {
     mx.transform(MD_MAX72XX::TSL);
     delay(DELAYTIME);
 
-    if (idx % 8 == 0 && WEBSERVER_ENABLED) {
+    if (idx % COL_SIZE == 0 && WEBSERVER_ENABLED) {
       server.handleClient();
     }
   }
