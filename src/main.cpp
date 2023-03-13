@@ -33,6 +33,8 @@
 #define DELAYTIME 100   // in milliseconds
 #define CHAR_SPACING  1 // pixels between characters
 
+#define CONFIG "/config.txt"
+
 // for message scrolling
 char message[BUF_SIZE] = "Hello World";
 bool newMessageAvailable = true;
@@ -172,17 +174,25 @@ void printText(uint8_t modStart, uint8_t modEnd, char *pMsg) {
 
 void setup() {
   Serial.begin(115200);
+  SPIFFS.begin();
+  //SPIFFS.remove(CONFIG);
+  delay(10);
+
+  // clear serial line
+  Serial.println();
+
   Serial.println("\nStarting WiFiManager");
-
   //wifiManager.resetSettings();
-
   bool wifi_connection = wifiManager.autoConnect();
-
  if (!wifi_connection) {
-    Serial.println("WiFi connection failed");
+    Serial.println("WiFi connection failed, restart");
+    delay(60);
     ESP.restart();
   } else {
     Serial.println("WiFi connection successful");
+    //Serial.print("Signal Strength (RSSI): ");
+    //Serial.print(getWifiQuality());
+    //Serial.println("%");
   }
 
  /* 
@@ -250,6 +260,22 @@ void setup() {
   //MDNS.addService("http", "tcp", 80);
 
   mx.begin();
+  Serial.println("Matrix created");
+  mx.control(MD_MAX72XX::INTENSITY, 0);
+  String moin = "moin!";
+  moin.toCharArray(message, BUF_SIZE);
+  printText(0, MAX_DEVICES-1, message);
+
+  for (int inx = 0; inx <= 15; inx++) {
+    mx.control(MD_MAX72XX::INTENSITY, inx);
+    delay(100);
+  }
+  for (int inx = 15; inx >= 0; inx--) {
+    mx.control(MD_MAX72XX::INTENSITY, inx);
+    delay(60);
+  }
+
+  // Scroll your own hostname after first boot.
   String hn = WiFi.getHostname();
   hn += "            ";
   hn.toCharArray(message, BUF_SIZE);
