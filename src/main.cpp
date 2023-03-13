@@ -21,6 +21,8 @@ void handleConfigure();
 void sendHeader();
 void sendFooter();
 
+void resetWifiConfig();
+
 void scrollText(String text);
 void printText(String text);
 void printText(int16_t startCol, String text);
@@ -29,7 +31,7 @@ void centerText(String text);
 
 ESP8266WebServer server(WEBSERVER_PORT);
 ESP8266HTTPUpdateServer serverUpdater;
-int8_t hold_seconds = 0;
+int16_t hold_seconds = 0;
 
 // for message scrolling
 String message = "Hello World";
@@ -81,22 +83,9 @@ void setup() {
   WiFiManager wifiManager;
   //wifiManager.resetSettings();
 
-  // reset WiFi settings, blink forever
+  // reset WiFi settings
   if (digitalRead(buttonWifiReset)) {
-    Serial.println("WiFi reset button pressed while booting. Reset WiFi settings.");
-    wifiManager.resetSettings();
-    scrollText("WiFi settings reset");
-    printText("release");
-    Serial.print("WiFi settings removed. Release button for reboot.");
-
-    while(digitalRead(buttonWifiReset)) {
-      flashLED(5, 100);
-      Serial.print(".");
-      delay(500);
-    }
-
-    ESP.reset();
-    delay(5000);
+    resetWifiConfig();
   }
 
   wifiManager.setAPCallback(configModeCallback);
@@ -160,10 +149,23 @@ void loop() {
 
   if (digitalRead(buttonWifiReset)) {
     hold_seconds++;
-    Serial.print(digitalRead(buttonWifiReset)); Serial.print(" - ");
-    Serial.println(hold_seconds);
+    // calculate row and column based on the counter and the column count of the display.
+    mx.setPoint(hold_seconds / mx.getColumnCount(), mx.getColumnCount() - (hold_seconds - (hold_seconds / mx.getColumnCount() * mx.getColumnCount())), 1);
+    
+    if (hold_seconds > mx.getColumnCount() * ROW_SIZE) {
+      hold_seconds = 0;
+      mx.clear();
+    }
   } else {
-    hold_seconds = 0;
+    // only reset wifi after at least a few seconds of hold the button
+    if (hold_seconds > mx.getColumnCount() * 2) {
+      resetWifiConfig();
+    } else if (hold_seconds > 0) {
+      hold_seconds = 0;
+      update_matrix = true;
+      ESP.restart();
+    } 
+    
   }
 
   if (WEBSERVER_ENABLED) {
@@ -380,9 +382,18 @@ void handleForgetWifi() {
     return server.requestAuthentication();
   }
   //TODO: redirectHome();
-  WiFiManager wifiManager;
-  wifiManager.resetSettings();
-  ESP.restart();
+  resetWifiConfig();
+}
+
+void resetWifiConfig() {
+    Serial.println("WiFi reset button pressed, will reset WiFi settings now.");
+    WiFiManager wifiManager;
+    wifiManager.resetSettings();
+    scrollText("WiFi settings reset");
+    printText("release");
+    Serial.print("WiFi settings removed. Release button for reboot.");
+
+    ESP.restart();
 }
 
 void sendHeader() {
