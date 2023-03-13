@@ -45,6 +45,7 @@ bool update_matrix = false;
 // clock data
 uint8_t time_hour = 255;
 uint8_t time_minute = 255;
+uint8_t time_second = 255;
 
 // SPI hardware interface
 MD_MAX72XX mx = MD_MAX72XX(HARDWARE_TYPE, CS_PIN, MAX_DEVICES);
@@ -168,9 +169,18 @@ void setup() {
 
 void loop() {
   struct tm timedate;
+  static bool ticktack = true;
 
   time_t now = time(&now);
   localtime_r(&now, &timedate);
+
+  if (DISPLAY_SECOND_TICK && time_second != timedate.tm_sec) {
+    mx.setPoint(0, 0, ticktack);
+    mx.setPoint(1, 0, !ticktack);
+    ticktack = !ticktack;
+
+    time_second = timedate.tm_sec;
+  }
 
   if (digitalRead(buttonWifiReset)) {
     hold_seconds++;

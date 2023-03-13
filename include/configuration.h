@@ -49,4 +49,6 @@ const int  day_light_offset_sec = 3600;
 boolean ENABLE_OTA = true;    // this will allow you to load firmware to the device over WiFi (see OTA for ESP8266)
 String OTA_Password = "";     // Set an OTA password here -- leave blank if you don't want to be prompted for password
 
+boolean DISPLAY_SECOND_TICK = false; // decide if we want to have a visible second "tick tack" in the top right corner
+
 #endif
