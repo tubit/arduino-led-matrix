@@ -23,6 +23,8 @@ void sendFooter();
 
 void scrollText(String text);
 void printText(String text);
+void printText(int16_t startCol, String text);
+void centerText(String text);
 /* end declare functions */
 
 ESP8266WebServer server(WEBSERVER_PORT);
@@ -213,7 +215,7 @@ void loop() {
     Serial.println(current_time);
 
     mx.control(MD_MAX72XX::INTENSITY, 0);
-    printText(current_time);
+    centerText(current_time);
   }
   delay(10);
 }
@@ -235,7 +237,7 @@ void scrollText(String text) {
 
   mx.clear();
 
-  for (unsigned int idx = 0; idx <= text.length(); idx++) {
+  for (unsigned int idx = 0; idx < text.length(); idx++) {
     charWidth = mx.getChar(utf8ascii(text.charAt(idx)), sizeof(cBuf) / sizeof(cBuf[0]), cBuf);
 
     for (uint8_t i = 0; i <= charWidth; i++) { // allow space between characters 
@@ -261,20 +263,48 @@ void scrollText(String text) {
   }
 }
 
-void printText(String text) {
+void printText(int16_t startCol, String text) {
   int16_t col = (MAX_DEVICES * COL_SIZE) - 1;
   int8_t charWidth = 8;
   uint8_t cBuf[8];  // this should be ok for all built-in fonts
 
   mx.clear();
 
+  // if the startColumn is not bigger then the maximum available columns, start there
+  if (startCol <= col) {
+    col = startCol;
+  }
+
   // print each char, but stop if it is not fitting
-  for (unsigned int idx = 0; idx <= text.length() && col >= 0; idx++) {
+  for (unsigned int idx = 0; idx < text.length() && col >= 0; idx++) {
     mx.setChar(col, text.charAt(idx));
 
     charWidth = mx.getChar(utf8ascii(text.charAt(idx)), sizeof(cBuf) / sizeof(cBuf[0]), cBuf);
     col = col - CHAR_SPACING - charWidth;
   }
+}
+
+void printText(String text) {
+  printText((MAX_DEVICES * COL_SIZE) - 1, text);
+}
+
+void centerText(String text) {
+  int16_t maxCol = (MAX_DEVICES * COL_SIZE) - 1;
+  uint8_t cBuf[8];  // this should be ok for all built-in fonts
+  int8_t charWidth = 8;
+  int8_t textWidth = 0;
+
+  for (unsigned int idx = 0; idx < text.length() && textWidth <= maxCol; idx++) {
+    charWidth = mx.getChar(utf8ascii(text.charAt(idx)), sizeof(cBuf) / sizeof(cBuf[0]), cBuf);
+    textWidth += charWidth;
+
+    if (idx < text.length() - 1) {
+      textWidth += CHAR_SPACING;
+    }
+  }
+
+  int startAt = maxCol - ((maxCol - textWidth) / 2);
+  printText(startAt, text);
 }
 
 void flashLED(int count, int delayTime) {
