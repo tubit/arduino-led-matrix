@@ -6,7 +6,6 @@
 #include <WiFiManager.h>          //https://github.com/tzapu/WiFiManager WiFi Configuration Magic
 
 #include <MD_MAX72xx.h>
-#include <SPI.h>
 
 #include <WebServer.h>
 #include <ESPmDNS.h>
