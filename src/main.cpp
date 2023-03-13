@@ -1,9 +1,12 @@
 #include <Arduino.h>
+
+// Use WiFiManager
 #include <WiFiManager.h>          // https://github.com/tzapu/WiFiManager WiFi Configuration Magic
 
 #include <SPI.h>
 #include <FS.h>
 
+// I need to translate UTF8 to ASCII for the LED Matrix
 #include "utf8ascii.h"
 
 // We need to include a different set of libraries depending on our platform
@@ -13,6 +16,7 @@
   #include <ESPmDNS.h>
   #define WEBSERVER WebServer
   #include <SPIFFS.h>
+  #include <ArduinoOTA.h>
 #endif
 #ifdef ARDUINO_ESP8266_WEMOS_D1MINILITE
   #include <ESP8266WiFi.h>
@@ -22,8 +26,10 @@
 #endif
 
 // Name to announce via mDNS
+// TODO: Can we make this configurable via WiFiManager?
 #define MDNS_NAME "led1"
 
+/* LED Matrix controller & settings */
 #include <MD_MAX72xx.h>
 #define BUF_SIZE      75  // text buffer size
 #define CHAR_SPACING  1   // pixels between characters
@@ -47,20 +53,19 @@
 #define DELAYTIME 100 // in milliseconds
 #define CHAR_SPACING  1 // pixels between characters
 
-#define BUF_SIZE  75
-char message[BUF_SIZE] = "Julian";
+char message[BUF_SIZE] = "Hello World";
 bool newMessageAvailable = true;
 
 // SPI hardware interface
 MD_MAX72XX mx = MD_MAX72XX(HARDWARE_TYPE, CS_PIN, MAX_DEVICES);
 
+/* Let's go */
 WiFiManager wifiManager;
 
 WEBSERVER server(80);
 
 void handleRoot() {
-  if (server.method() == HTTP_POST)
-  {
+  if (server.method() == HTTP_POST) {
     for (uint8_t i = 0; i < server.args(); i++) {
       if (server.argName(i) == "message")
       {
@@ -98,86 +103,118 @@ void scrollText(const char *p)
 
   mx.clear();
 
-  while (*p != '\0')
-  {
+  while (*p != '\0') {
     charWidth = mx.getChar(utf8ascii(*p++), sizeof(cBuf) / sizeof(cBuf[0]), cBuf);
 
-    for (uint8_t i = 0; i <= charWidth; i++) // allow space between characters
-    {
+    for (uint8_t i = 0; i <= charWidth; i++) { // allow space between characters 
       mx.transform(MD_MAX72XX::TSL);
       if (i < charWidth)
         mx.setColumn(0, cBuf[i]);
       delay(DELAYTIME);
     }
+
+    // handle http requests during scrolling
+    // TODO: currently this overwrites the message.. We need to copy the text before scrolling and let it finish.
+    server.handleClient();
+
   }
 }
 
 void setup() {
   Serial.begin(115200);
-  Serial.println("\nConnecting");
+  Serial.println("\nStarting WiFiManager");
+
+  //wifiManager.resetSettings();
 
   WiFi.setHostname(MDNS_NAME);
-  wifiManager.autoConnect("LED Matrix");
+  bool wifi_connection = wifiManager.autoConnect();
 
-  
-  if (!MDNS.begin(MDNS_NAME))
-  {
-    Serial.println("Error setting up MDNS responder!");
-    while (1) {
-      delay(1000);
-    }
+ if (!wifi_connection) {
+    Serial.println("WiFi connection failed");
+    ESP.restart();
+  } else {
+    Serial.println("WiFi connection successful");
   }
   
-  Serial.println("mDNS responder started");
+  if (!MDNS.begin(MDNS_NAME)) {
+    Serial.println("Error setting up MDNS responder!");
+  } else {
+    Serial.println("mDNS responder started");
+  }
+
+#ifndef ARDUINO_ESP8266_WEMOS_D1MINILITE
+  // Port defaults to 3232
+  // ArduinoOTA.setPort(3232);
+
+  // Hostname defaults to esp3232-[MAC]
+  // ArduinoOTA.setHostname("myesp32");
+
+  // No authentication by default
+  // ArduinoOTA.setPassword("admin");
+
+  // Password can be set with it's md5 value as well
+  // MD5(admin) = 21232f297a57a5a743894a0e4a801fc3
+  // ArduinoOTA.setPasswordHash("21232f297a57a5a743894a0e4a801fc3");
+
+  ArduinoOTA
+    .onStart([]() {
+      String type;
+      if (ArduinoOTA.getCommand() == U_FLASH)
+        type = "sketch";
+      else // U_SPIFFS
+        type = "filesystem";
+
+      // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
+      Serial.println("Start updating " + type);
+    })
+    .onEnd([]() {
+      Serial.println("\nEnd");
+    })
+    .onProgress([](unsigned int progress, unsigned int total) {
+      Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+    })
+    .onError([](ota_error_t error) {
+      Serial.printf("Error[%u]: ", error);
+      if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
+      else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
+      else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
+      else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
+      else if (error == OTA_END_ERROR) Serial.println("End Failed");
+    });
+
+  ArduinoOTA.begin();
+#endif
 
   server.on("/", handleRoot);
-
-  server.on("/inline", []() {
-    server.send(200, "text/plain", "this works as well");
-  });
-
   server.onNotFound(handleNotFound);
-
   server.begin();
+
   Serial.println("HTTP server started\n");
  
   MDNS.addService("http", "tcp", 80);
 
   mx.begin();
-
-  // config file test
-  bool initok = false;
-  SPI.begin();
-
-  initok = SPIFFS.begin();
-  if (!(initok))
-  {
-    Serial.println("Format SPIFFS");
-
-  }
-  if (initok) {
-    Serial.println("SPIFFS is OK");
-    File myfile = SPIFFS.open("/config", "r");
-    String content = myfile.readStringUntil('\n');
-    Serial.println(content);
-  }
-
+  String hn = WiFi.getHostname();
+  hn += "            ";
+  hn.toCharArray(message, BUF_SIZE);
+  newMessageAvailable = true;
 }
 
 void loop() {
-  //if (wifiMulti.run() == WL_CONNECTED) {
+  if (WiFi.status() == WL_CONNECTED) {
+#ifndef ARDUINO_ESP8266_WEMOS_D1MINILITE
+    ArduinoOTA.handle();
+#endif
     server.handleClient();
 
-    // print on MX
-    if (newMessageAvailable)
-    {
-      Serial.println("Processing new message: " + String(message));
+    if (newMessageAvailable) {
+      Serial.println("Processing message: " + String(message));
       scrollText(message);
-      newMessageAvailable = false;
+      //newMessageAvailable = false;
     }
-  /*}
+  }
   else {
     Serial.println("WiFi not connected!");
     delay(1000);
-  }*/
+  }
 }
