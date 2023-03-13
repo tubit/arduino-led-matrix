@@ -83,15 +83,15 @@ void setup() {
 
   // reset WiFi settings, blink forever
   if (digitalRead(buttonWifiReset)) {
-    scrollText("WiFi settings reset");
     Serial.println("WiFi reset button pressed while booting. Reset WiFi settings.");
     wifiManager.resetSettings();
+    scrollText("WiFi settings reset");
+    printText("release");
     Serial.print("WiFi settings removed. Release button for reboot.");
 
-    while( digitalRead(buttonWifiReset)) {
+    while(digitalRead(buttonWifiReset)) {
       flashLED(5, 100);
       Serial.print(".");
-      flashLED(5, 50);
       delay(500);
     }
 
@@ -228,7 +228,7 @@ void configModeCallback (WiFiManager *myWiFiManager) {
   Serial.println(myWiFiManager->getConfigPortalSSID());
   Serial.println("To setup Wifi Configuration");
   scrollText("Please Connect to AP: " + String(myWiFiManager->getConfigPortalSSID()));
-  //TODO: centerPrint("wifi");
+  printText("config");
 }
 
 void scrollText(String text) {
