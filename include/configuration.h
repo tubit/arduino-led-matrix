@@ -46,4 +46,7 @@ String themeColor = "blue-grey"; // this can be changed later in the web interfa
 const long gmt_offset_sec = 3600;
 const int  day_light_offset_sec = 3600;
 
+boolean ENABLE_OTA = true;    // this will allow you to load firmware to the device over WiFi (see OTA for ESP8266)
+String OTA_Password = "";     // Set an OTA password here -- leave blank if you don't want to be prompted for password
+
 #endif
