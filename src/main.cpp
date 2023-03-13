@@ -2,7 +2,7 @@
 #include "utf8ascii.h"
 #include "effects.h"
 
-#define VERSION "0.0.1"
+#define VERSION "1.0.0"
 #define CONFIG "/config.txt"
 #define HOSTNAME "ESP-"
 
@@ -211,14 +211,14 @@ void loop() {
 
   if (newMessageAvailable) {
     Serial.println("Processing message: " + String(message));
-    mx.control(MD_MAX72XX::INTENSITY, 2);
+    mx.control(MD_MAX72XX::INTENSITY, INTENSITY_TEXT);
     scrollText(message);
     newMessageAvailable = false;
     update_matrix = true;
   }
 
   if (animation > 0) {
-    mx.control(MD_MAX72XX::INTENSITY, 2);
+    mx.control(MD_MAX72XX::INTENSITY, INTENSITY_ANIMATION);
     switch (animation) {
       case 1: bullseye(&mx); break;
       case 2: bounce(&mx); break;
@@ -250,7 +250,7 @@ void loop() {
     Serial.print("Update clock: ");
     Serial.println(current_time);
 
-    mx.control(MD_MAX72XX::INTENSITY, 0);
+    mx.control(MD_MAX72XX::INTENSITY, INTENSITY_CLOCK);
     centerText(current_time);
   }
   delay(10);

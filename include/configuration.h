@@ -51,4 +51,8 @@ String OTA_Password = "";     // Set an OTA password here -- leave blank if you 
 
 boolean DISPLAY_SECOND_TICK = false; // decide if we want to have a visible second "tick tack" in the top right corner
 
+int8_t INTENSITY_CLOCK     = 0;
+int8_t INTENSITY_TEXT      = 2;
+int8_t INTENSITY_ANIMATION = 2;
+
 #endif
