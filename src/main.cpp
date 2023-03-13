@@ -303,7 +303,7 @@ void centerText(String text) {
     }
   }
 
-  int startAt = maxCol - ((maxCol - textWidth) / 2);
+  int startAt = maxCol - ((maxCol - textWidth) / 2) + 1;
   printText(startAt, text);
 }
 
