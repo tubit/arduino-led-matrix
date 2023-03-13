@@ -19,6 +19,7 @@ void sendFooter();
 
 ESP8266WebServer server(WEBSERVER_PORT);
 ESP8266HTTPUpdateServer serverUpdater;
+int8_t hold_seconds = 0;
 
 void setup() {
   Serial.begin(115200);
@@ -103,9 +104,16 @@ void setup() {
 }
 
 void loop() {
-  delay(10);
-
-  Serial.println(digitalRead(buttonWifiReset));
+/*
+  Serial.print(digitalRead(buttonWifiReset)); Serial.print(" - ");
+  if (digitalRead(buttonWifiReset)) {
+    hold_seconds++;
+    Serial.println(hold_seconds);
+  } else {
+    hold_seconds = 0;
+    Serial.println("release");
+  }
+*/
 
   if (WEBSERVER_ENABLED) {
     server.handleClient();
@@ -113,6 +121,8 @@ void loop() {
 //  if (ENABLE_OTA) {
 //    ArduinoOTA.handle();
 //  }
+  
+  delay(100);
 }
 
 void configModeCallback (WiFiManager *myWiFiManager) {
