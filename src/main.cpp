@@ -272,6 +272,10 @@ void scrollText(String text) {
   uint8_t charWidth;
   uint8_t cBuf[8];  // this should be ok for all built-in fonts
 
+  if (WEBSERVER_ENABLED) {
+    server.handleClient();
+  }
+
   mx.clear();
 
   for (unsigned int idx = 0; idx < text.length(); idx++) {
@@ -399,23 +403,28 @@ void handleRoot() {
 
     String html = "<h1>Welcome to the Dot Matrix Clock</h1>\n";
     html += "<form action='/' method='POST'>\n";
-    html += "<label>Scroll message:</label><br />\n";
-    html += "<input type='text' name='message' value='' maxlength='60'><br />\n";
-    html += "<input type='submit' name='submit' />\n";
+    html += "  <div class='form-group'>\n";
+    html += "    <label for='scrollText'>Scroll message:</label><br />\n";
+    html += "    <input id='scrollText' type='text' class='form-control' name='message' value='' maxlength='60' placeholder='Text to scroll'>\n";
+    html += "    <button type='submit'  class='btn btn-primary' name='submit'>Send</button>\n";
+    html += "  </div>";
     html += "</form><br />\n";
     html += "<form action='/' method='POST'>\n";
-    html += "<label>Animation:</label><br />\n";
-    html += "<select name='animation'>\n";
-    html += "<option value='1'>Bullseye</option>\n";
-    html += "<option value='2'>Jumping dot</option>\n";
-    html += "<option value='3'>Cross</option>\n";
-    html += "<option value='4'>Diagonal</option>\n";
-    html += "<option value='5'>Spiral</option>\n";
-    html += "<option value='6'>Up-Down</option>\n";
-    html += "<option value='7'>Left-Right</option>\n";
-    html += "<option value='8'>Chessboard</option>\n";
-    html += "<option value='9'>:-)</option>\n";
-    html += "</select><br />\n<input type='submit' name='submit' />\n";
+    html += "  <div class='form-group'>\n";
+    html += "    <label id='animationSelect'>Animation:</label>\n";
+    html += "    <select class='form-control' id='animationSelect' name='animation'>\n";
+    html += "      <option value='1'>Bullseye</option>\n";
+    html += "      <option value='2'>Jumping dot</option>\n";
+    html += "      <option value='3'>Cross</option>\n";
+    html += "      <option value='4'>Diagonal</option>\n";
+    html += "      <option value='5'>Spiral</option>\n";
+    html += "      <option value='6'>Up-Down</option>\n";
+    html += "      <option value='7'>Left-Right</option>\n";
+    html += "      <option value='8'>Chessboard</option>\n";
+    html += "      <option value='9'>:-)</option>\n";
+    html += "    </select>\n";
+    html += "    <button type='submit'  class='btn btn-primary' name='submit'>Send</button>\n";
+    html += "  </div>";
     html += "</form>\n";
     server.sendContent(html);
 
