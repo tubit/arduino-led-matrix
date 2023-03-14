@@ -15,6 +15,7 @@ void flashLED(int count, int delayTime);
 void configModeCallback (WiFiManager *myWiFiManager);
 int8_t getWifiQuality();
 
+void redirectHome();
 void handleRoot();
 void handleForgetWifi();
 void handleConfigure();
@@ -375,6 +376,7 @@ boolean authentication() {
 
 void handleRoot() {
   if (server.method() == HTTP_POST) {
+    redirectHome();
     for (uint8_t i = 0; i < server.args(); i++) {
       if (server.argName(i) == "message") {
         message = server.arg(i);
@@ -383,9 +385,44 @@ void handleRoot() {
         animation = server.arg(i).toInt();
       }
     }
-    server.send(200, "text/plain", "Requests handled, thank you!");
   } else {
-    server.send(200, "text/plan", "I can just work woth POST requests, sorry.");
+  if (!authentication()) {
+    return server.requestAuthentication();
+  }
+    server.sendHeader("Cache-Control", "no-cache, no-store");
+    server.sendHeader("Pragma", "no-cache");
+    server.sendHeader("Expires", "-1");
+    server.setContentLength(CONTENT_LENGTH_UNKNOWN);
+    server.send(200, "text/html", "");
+
+    sendHeader();
+
+    String html = "<h1>Welcome to the Dot Matrix Clock</h1>\n";
+    html += "<form action='/' method='POST'>\n";
+    html += "<label>Scroll message:</label><br />\n";
+    html += "<input type='text' name='message' value='' maxlength='60'><br />\n";
+    html += "<input type='submit' name='submit' />\n";
+    html += "</form><br />\n";
+    html += "<form action='/' method='POST'>\n";
+    html += "<label>Animation:</label><br />\n";
+    html += "<select name='animation'>\n";
+    html += "<option value='1'>Bullseye</option>\n";
+    html += "<option value='2'>Jumping dot</option>\n";
+    html += "<option value='3'>Cross</option>\n";
+    html += "<option value='4'>Diagonal</option>\n";
+    html += "<option value='5'>Spiral</option>\n";
+    html += "<option value='6'>Up-Down</option>\n";
+    html += "<option value='7'>Left-Right</option>\n";
+    html += "<option value='8'>Chessboard</option>\n";
+    html += "<option value='9'>:-)</option>\n";
+    html += "</select><br />\n<input type='submit' name='submit' />\n";
+    html += "</form>\n";
+    server.sendContent(html);
+
+    sendFooter();
+
+    server.sendContent("");
+    server.client().stop();
   }
 }
 
@@ -394,8 +431,6 @@ void handleConfigure() {
     return server.requestAuthentication();
   }
   digitalWrite(notifyLight, LOW);
-  String html = "";
-
   server.sendHeader("Cache-Control", "no-cache, no-store");
   server.sendHeader("Pragma", "no-cache");
   server.sendHeader("Expires", "-1");
@@ -403,6 +438,10 @@ void handleConfigure() {
   server.send(200, "text/html", "");
 
   sendHeader();
+
+  String html = "<h1>Configuration</h1>\n";
+  html += "To be implemented...";
+  server.sendContent(html);
 
   sendFooter();
 
@@ -415,7 +454,8 @@ void handleForgetWifi() {
   if (!authentication()) {
     return server.requestAuthentication();
   }
-  //TODO: redirectHome();
+
+  redirectHome();
   resetWifiConfig();
 }
 
@@ -430,28 +470,55 @@ void resetWifiConfig() {
     ESP.restart();
 }
 
-void sendHeader() {
-  String html = "<!DOCTYPE HTML>";
-  html += "<html><head><title>Matrix Clock</title><link rel='icon' href='data:;base64,='>";
-  html += "<meta http-equiv='Content-Type' content='text/html; charset=UTF-8' />";
-  html += "<meta name='viewport' content='width=device-width, initial-scale=1'>";
-  html += "<link rel='stylesheet' href='https://www.w3schools.com/w3css/4/w3.css'>";
-  html += "<link rel='stylesheet' href='https://www.w3schools.com/lib/w3-theme-" + themeColor + ".css'>";
-  html += "<link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.8.1/css/all.min.css'>";
-  html += "</head><body>";
-  server.sendContent(html);
-  html = "<nav class='w3-sidebar w3-bar-block w3-card' style='margin-top:88px' id='mySidebar'>";
-  html += "<div class='w3-container w3-theme-d2'>";
-  html += "<span onclick='closeSidebar()' class='w3-button w3-display-topright w3-large'><i class='fas fa-times'></i></span>";
-  html += "<div class='w3-padding'>Menu</div></div>";
-  server.sendContent(html);
+void redirectHome() {
+  // Send them back to the Root Directory
+  server.sendHeader("Location", String("/"), true);
+  server.sendHeader("Cache-Control", "no-cache, no-store");
+  server.sendHeader("Pragma", "no-cache");
+  server.sendHeader("Expires", "-1");
+  server.send(302, "text/plain", "");
+  server.client().stop();
+  delay(1000);
+}
 
-  html = "</nav>";
-  html += "<header class='w3-top w3-bar w3-theme'><button class='w3-bar-item w3-button w3-xxxlarge w3-hover-theme' onclick='openSidebar()'><i class='fas fa-bars'></i></button><h2 class='w3-bar-item'>Matrix Clock</h2></header>";
-  html += "<script>";
-  html += "function openSidebar(){document.getElementById('mySidebar').style.display='block'}function closeSidebar(){document.getElementById('mySidebar').style.display='none'}closeSidebar();";
-  html += "</script>";
-  html += "<br><div class='w3-container w3-large' style='margin-top:88px'>";
+void sendHeader() {
+  String html = "<!doctype html>\n";
+  html += "<html lang='en'>\n";
+  html += "<head>\n";
+  html += "  <!-- Required meta tags -->\n";
+  html += "  <meta charset='utf-8'>\n";
+  html += "  <meta name='viewport' content='width=device-width, initial-scale=1, shrink-to-fit=no'>\n";
+  html += "  <style>\n";
+  html += "    html { position: relative; min-height: 100%; }\n";
+  html += "    body { margin-bottom: 60px; }\n";
+  html += "    .footer { position: absolute; bottom: 0; width: 100%; height: 60px; line-height: 60px; background-color: #f5f5f5; }\n";
+  html += "    body > .container { padding: 60px 15px 0; }\n";
+  html += "  </style>\n";
+  server.sendContent(html);
+  html = "  <link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/css/bootstrap.min.css' integrity='sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm' crossorigin='anonymous'>\n";
+  html += "  <title>Dot-Matrix-Clock!</title>\n";
+  html += "</head>\n";
+  html += "<body>\n";
+  html += "    <header>\n";
+  html += "    <nav class='navbar navbar-expand-md navbar-dark fixed-top bg-dark'>\n";
+  html += "      <a class='navbar-brand' href='#'>Matrix Clock</a>\n";
+  html += "      <button class='navbar-toggler' type='button' data-toggle='collapse' data-target='#navbarCollapse' aria-controls='navbarCollapse' aria-expanded='false' aria-label='Toggle navigation'>\n";
+  html += "        <span class='navbar-toggler-icon'></span>\n";
+  html += "      </button>\n";
+  html += "      <div class='collapse navbar-collapse' id='navbarCollapse'>\n";
+  html += "        <ul class='navbar-nav mr-auto'>\n";
+  html += "          <li class='nav-item'>\n";
+  html += "            <a class='nav-link' href='/'>Home</a>\n";
+  html += "          </li>\n";
+  html += "          <li class='nav-item'>\n";
+  html += "            <a class='nav-link' href='/configure'>Configuration</a>\n";
+  html += "          </li>\n";
+  html += "        </ul>\n";
+  html += "      </div>\n";
+  html += "    </nav>\n";
+  html += "  </header>\n";
+  html += "  <main role='main' class='container'>\n";
+
   server.sendContent(html);
 }
 
@@ -460,13 +527,18 @@ void sendFooter() {
   Serial.print("Signal Strength (RSSI): ");
   Serial.print(rssi);
   Serial.println("%");
-  String html = "<br><br><br>";
-  html += "</div>";
-  html += "<footer class='w3-container w3-bottom w3-theme w3-margin-top'>";
-  html += "<i class='far fa-paper-plane'></i> Version: " + String(VERSION) + "<br>";
-  html += "<i class='fas fa-rss'></i> Signal Strength: ";
-  html += String(rssi) + "%";
-  html += "</footer>";
-  html += "</body></html>";
+
+  String html = "        </main>\n";
+  html += "  <footer class='footer'>\n";
+  html += "    <div class='container'>\n";
+  html += "      <span class='text-muted'>WiFi Signal: " + String(rssi) + "% -/- Version: " + String(VERSION) + "</span>\n";
+  html += "    </div>\n";
+  html += "  </footer>\n";
+  html += "    <script src='https://code.jquery.com/jquery-3.2.1.slim.min.js' integrity='sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN' crossorigin='anonymous'></script>\n";
+  //html += "  <script>window.jQuery || document.write('<script src="../../assets/js/vendor/jquery-slim.min.js"><\/script>')</script>
+  html += "    <script src='https://cdn.jsdelivr.net/npm/popper.js@1.12.9/dist/umd/popper.min.js' integrity='sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q' crossorigin='anonymous'></script>\n";
+  html += "    <script src='https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/js/bootstrap.min.js' integrity='sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl' crossorigin='anonymous'></script>\n";
+  html += "  </body>\n";
+  html += "</html>\n";
   server.sendContent(html);
 }
