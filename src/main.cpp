@@ -142,8 +142,9 @@ void setup() {
     server.on("/", handleRoot);
     server.on("/forgetwifi", handleForgetWifi);
     server.on("/configure", handleConfigure);
-    //server.onNotFound(redirectHome);
-    serverUpdater.setup(&server, "/update", www_username, www_password);
+    server.onNotFound(redirectHome);
+    serverUpdater.setup(&server, "/update");
+    //serverUpdater.setup(&server, "/update", www_username, www_password);
 
     // Start the server
     server.begin();
@@ -450,6 +451,14 @@ void handleConfigure() {
 
   String html = "<h1>Configuration</h1>\n";
   html += "To be implemented...";
+  html += "\n";
+  html += "  <div class='card'>\n";
+  html += "    <div class='card-body'>\n";
+  html += "      <h5 class='card-title'>Firmware update</h5>\n";
+  html += "      <p class='card-text'>You can download a firmware file from <a href='https://github.com/tubit/arduino-led-matrix/releases'>Github</a> and upload it to your clock here.</p>\n";
+  html += "      <a href='/update' class='btn btn-primary'>Go!</a>\n";
+  html += "    </div>\n";
+  html += "  </div>\n";
   server.sendContent(html);
 
   sendFooter();
