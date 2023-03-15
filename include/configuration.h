@@ -50,9 +50,8 @@ boolean ENABLE_OTA = true;    // this will allow you to load firmware to the dev
 String OTA_Password = "";     // Set an OTA password here -- leave blank if you don't want to be prompted for password
 
 boolean DISPLAY_SECOND_TICK = false; // decide if we want to have a visible second "tick tack" in the top right corner
-
-int8_t INTENSITY_CLOCK     = 0;
-int8_t INTENSITY_TEXT      = 2;
-int8_t INTENSITY_ANIMATION = 2;
+int INTENSITY_CLOCK     = 0;
+int INTENSITY_TEXT      = 2;
+int INTENSITY_ANIMATION = 2;
 
 #endif
