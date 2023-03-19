@@ -42,7 +42,6 @@ int16_t hold_seconds = 0;
 // for message scrolling
 String message = "Hello World";
 bool newMessageAvailable = true;
-bool loop_message = true;
 
 int animation = 0;
 
