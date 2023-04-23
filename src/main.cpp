@@ -1,17 +1,11 @@
 #include "configuration.h"
-#include "utf8ascii.h"
-#include "effects.h"
 
 #define VERSION "1.0.0"
 #define CONFIG "/config.txt"
 #define HOSTNAME "ESP-"
 
-// Change the externalLight to the pin you wish to use if other than the Built-in LED
-int notifyLight = LED_BUILTIN; // LED_BUILTIN is is the built in LED on the Wemos
-int buttonWifiReset = 16;
+// adapt and use: https://github.com/upiir/arduino_matrix_display_max7219_u8g2/blob/main/arduino_matrix_yt_counter.ino
 
-/* declare functions */
-void flashLED(int count, int delayTime);
 void configModeCallback (WiFiManager *myWiFiManager);
 int8_t getWifiQuality();
 
@@ -74,16 +68,9 @@ void setup() {
   // set input for Button
   pinMode(buttonWifiReset, INPUT_PULLDOWN_16);
 
-  mx.begin();
-  mx.clear();
   Serial.println("Matrix created");
-  mx.control(MD_MAX72XX::INTENSITY, 0);
-  printText("moin!");
+//  printText("moin!");
 
-  for (int inx = 0; inx <= 15; inx++) {
-    mx.control(MD_MAX72XX::INTENSITY, inx);
-    delay(100);
-  }
   
   // start WifiManager, set configCallbacks
   WiFiManager wifiManager;
@@ -95,12 +82,6 @@ void setup() {
   }
 
   wifiManager.setAPCallback(configModeCallback);
-
-  // dim down intensity again
-  for (int inx = 15; inx >= 0; inx--) {
-    mx.control(MD_MAX72XX::INTENSITY, inx);
-    delay(60);
-  }
 
   String hostname(HOSTNAME);
   hostname += String(ESP.getChipId(), HEX);
@@ -163,10 +144,6 @@ void setup() {
     Serial.println("Web Interface is Disabled");
   }
 
-  // Scroll your own hostname after first boot.
-  message = WiFi.getHostname();
-  newMessageAvailable = true;
-
   // set timezone
   configTime(gmt_offset_sec, day_light_offset_sec, "0.de.pool.ntp.org", "1.de.pool.ntp.org", "2.de.pool.ntp.org");
   setenv("TZ", "CET-1CEST,M3.5.0,M10.5.0/3", 1); // Timezone Europe/Berlin
@@ -185,31 +162,11 @@ void loop() {
   localtime_r(&now, &timedate);
 
   if (DISPLAY_SECOND_TICK && time_second != timedate.tm_sec) {
-    mx.setPoint(0, 0, ticktack);
-    mx.setPoint(1, 0, !ticktack);
+//    mx.setPoint(0, 0, ticktack);
+//    mx.setPoint(1, 0, !ticktack);
     ticktack = !ticktack;
 
     time_second = timedate.tm_sec;
-  }
-
-  if (digitalRead(buttonWifiReset)) {
-    hold_seconds++;
-    // calculate row and column based on the counter and the column count of the display.
-    mx.setPoint(hold_seconds / mx.getColumnCount(), mx.getColumnCount() - (hold_seconds - (hold_seconds / mx.getColumnCount() * mx.getColumnCount())), 1);
-    
-    if (hold_seconds > mx.getColumnCount() * ROW_SIZE) {
-      hold_seconds = 0;
-      mx.clear();
-    }
-  } else {
-    // only reset wifi after at least a few seconds of hold the button
-    if (hold_seconds > mx.getColumnCount() * 2) {
-      resetWifiConfig();
-    } else if (hold_seconds > 0) {
-      hold_seconds = 0;
-      update_matrix = true;
-      ESP.restart();
-    } 
   }
 
   if (WEBSERVER_ENABLED) {
@@ -221,27 +178,9 @@ void loop() {
 
   if (newMessageAvailable) {
     Serial.println("Processing message: " + String(message));
-    mx.control(MD_MAX72XX::INTENSITY, INTENSITY_TEXT);
-    scrollText(message);
+//    mx.control(MD_MAX72XX::INTENSITY, INTENSITY_TEXT);
+//    scrollText(message);
     newMessageAvailable = false;
-    update_matrix = true;
-  }
-
-  if (animation > 0) {
-    mx.control(MD_MAX72XX::INTENSITY, INTENSITY_ANIMATION);
-    switch (animation) {
-      case 1: bullseye(&mx); break;
-      case 2: bounce(&mx); break;
-      case 3: cross(&mx); break;
-      case 4: stripe(&mx); break;
-      case 5: spiral(&mx); break;
-      case 6: rows(&mx); break;
-      case 7: columns(&mx); break;
-      case 8: checkboard(&mx); break;
-      case 9: transformation1(&mx); break;
-    }
-
-    animation = 0;
     update_matrix = true;
   }
 
@@ -260,8 +199,8 @@ void loop() {
     Serial.print("Update clock: ");
     Serial.println(current_time);
 
-    mx.control(MD_MAX72XX::INTENSITY, INTENSITY_CLOCK);
-    centerText(current_time);
+//    mx.control(MD_MAX72XX::INTENSITY, INTENSITY_CLOCK);
+//    centerText(current_time);
   }
   delay(10);
 }
@@ -273,7 +212,6 @@ void configModeCallback (WiFiManager *myWiFiManager) {
   Serial.println("Please connect to AP");
   Serial.println(myWiFiManager->getConfigPortalSSID());
   Serial.println("To setup Wifi Configuration");
-  scrollText("Please Connect to AP: " + String(myWiFiManager->getConfigPortalSSID()));
   printText("config");
 }
 
@@ -284,33 +222,6 @@ void scrollText(String text) {
   if (WEBSERVER_ENABLED) {
     server.handleClient();
   }
-
-  mx.clear();
-
-  for (unsigned int idx = 0; idx < text.length(); idx++) {
-    charWidth = mx.getChar(utf8ascii(text.charAt(idx)), sizeof(cBuf) / sizeof(cBuf[0]), cBuf);
-
-    for (uint8_t i = 0; i <= charWidth; i++) { // allow space between characters 
-      mx.transform(MD_MAX72XX::TSL);
-      if (i < charWidth)
-        mx.setColumn(0, cBuf[i]);
-      delay(DELAYTIME);
-    }
-
-    if (WEBSERVER_ENABLED) {
-      server.handleClient();
-    }
-  }
-
-  // fill the screen with blank to scroll the message out of the screen
-  for (unsigned int idx = 0; idx < MAX_DEVICES * COL_SIZE; idx++) {
-    mx.transform(MD_MAX72XX::TSL);
-    delay(DELAYTIME);
-
-    if (idx % COL_SIZE == 0 && WEBSERVER_ENABLED) {
-      server.handleClient();
-    }
-  }
 }
 
 void printText(int16_t startCol, String text) {
@@ -318,20 +229,11 @@ void printText(int16_t startCol, String text) {
   int8_t charWidth = 8;
   uint8_t cBuf[8];  // this should be ok for all built-in fonts
 
-  mx.clear();
-
   // if the startColumn is not bigger then the maximum available columns, start there
   if (startCol <= col) {
     col = startCol;
   }
 
-  // print each char, but stop if it is not fitting
-  for (unsigned int idx = 0; idx < text.length() && col >= 0; idx++) {
-    mx.setChar(col, text.charAt(idx));
-
-    charWidth = mx.getChar(utf8ascii(text.charAt(idx)), sizeof(cBuf) / sizeof(cBuf[0]), cBuf);
-    col = col - CHAR_SPACING - charWidth;
-  }
 }
 
 void printText(String text) {
@@ -344,17 +246,6 @@ void centerText(String text) {
   int8_t charWidth = 8;
   int8_t textWidth = 0;
 
-  for (unsigned int idx = 0; idx < text.length() && textWidth <= maxCol; idx++) {
-    charWidth = mx.getChar(utf8ascii(text.charAt(idx)), sizeof(cBuf) / sizeof(cBuf[0]), cBuf);
-    textWidth += charWidth;
-
-    if (idx < text.length() - 1) {
-      textWidth += CHAR_SPACING;
-    }
-  }
-
-  int startAt = maxCol - ((maxCol - textWidth) / 2) + 1;
-  printText(startAt, text);
 }
 
 void flashLED(int count, int delayTime) {
