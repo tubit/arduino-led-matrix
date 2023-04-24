@@ -1,4 +1,5 @@
 #include "configuration.h"
+#include <U8g2lib.h>
 
 #define VERSION "1.0.0"
 #define CONFIG "/config.txt"
@@ -23,21 +24,11 @@ void writeConfig();
 
 void resetWifiConfig();
 
-void scrollText(String text);
-void printText(String text);
-void printText(int16_t startCol, String text);
-void centerText(String text);
 /* end declare functions */
 
 ESP8266WebServer server(WEBSERVER_PORT);
 ESP8266HTTPUpdateServer serverUpdater;
 int16_t hold_seconds = 0;
-
-// for message scrolling
-String message = "Hello World";
-bool newMessageAvailable = true;
-
-int animation = 0;
 
 bool update_matrix = false;
 
@@ -46,8 +37,7 @@ uint8_t time_hour = 255;
 uint8_t time_minute = 255;
 uint8_t time_second = 255;
 
-// SPI hardware interface
-MD_MAX72XX mx = MD_MAX72XX(HARDWARE_TYPE, CS_PIN, MAX_DEVICES);
+U8G2_MAX7219_32X8_F_4W_SW_SPI u8g2(U8G2_R0, /* clock=*/ CLK_PIN, /* data=*/ DATA_PIN, /* cs=*/ CS_PIN, /* dc=*/ U8X8_PIN_NONE, /* reset=*/ U8X8_PIN_NONE);
 
 void setup() {
   Serial.begin(115200);
@@ -65,21 +55,22 @@ void setup() {
   // set output for external LED
   pinMode(notifyLight, OUTPUT);
 
-  // set input for Button
-  pinMode(buttonWifiReset, INPUT_PULLDOWN_16);
+  u8g2.begin(); // begin function is required for u8g2 library
+  u8g2.setContrast(0); // set display contrast 0-255
 
-  Serial.println("Matrix created");
-//  printText("moin!");
+  u8g2.clearBuffer();	// clear the internal u8g2 memory
+  u8g2.setFont(u8g2_font_minuteconsole_tr);	// choose a suitable font with digits 3px wide
+ 
+  u8g2.drawStr(16, 8, "moin");
+  u8g2.sendBuffer();
 
-  
+  for (int i = 0; i<255; i++) { u8g2.setContrast(i); delay(5); }
+  delay(10);
+  for (int i = 255; i>0; i--) { u8g2.setContrast(i); delay(5); }
+
   // start WifiManager, set configCallbacks
   WiFiManager wifiManager;
   //wifiManager.resetSettings();
-
-  // reset WiFi settings
-  if (digitalRead(buttonWifiReset)) {
-    resetWifiConfig();
-  }
 
   wifiManager.setAPCallback(configModeCallback);
 
@@ -176,33 +167,31 @@ void loop() {
     ArduinoOTA.handle();
   }
 
-  if (newMessageAvailable) {
-    Serial.println("Processing message: " + String(message));
-//    mx.control(MD_MAX72XX::INTENSITY, INTENSITY_TEXT);
-//    scrollText(message);
-    newMessageAvailable = false;
-    update_matrix = true;
-  }
-
   if (timedate.tm_min != time_minute || timedate.tm_hour != time_hour || update_matrix == true) {
     update_matrix = false;
 
     time_minute = timedate.tm_min;
     time_hour = timedate.tm_hour;
 
-    String current_time = " ";
-    if (time_hour < 10) current_time += "0";
-    current_time += (String)time_hour + ":";
-    if (time_minute < 10) current_time += "0";
-    current_time += (String)time_minute;
+    Serial.printf("Update clock: %02d:%02d\n", time_hour, time_minute); 
 
-    Serial.print("Update clock: ");
-    Serial.println(current_time);
+    u8g2.clearBuffer();	// clear the internal u8g2 memory
+    u8g2.setFont(u8g2_font_minuteconsole_tr);	// choose a suitable font with digits 3px wide
+    u8g2.setContrast(INTENSITY_CLOCK * 10);
+    
+    char digit_char[2];
+    itoa(time_hour, digit_char, 10);
+    if (time_hour < 10) { digit_char[1] = digit_char[0]; digit_char[0] = '0'; }
+    u8g2.drawStr(16, 8, digit_char); // hour
 
-//    mx.control(MD_MAX72XX::INTENSITY, INTENSITY_CLOCK);
-//    centerText(current_time);
+    itoa(time_minute, digit_char, 10);
+    if (time_minute < 10) { digit_char[1] = digit_char[0]; digit_char[0] = '0'; }
+    u8g2.drawStr(25, 8, digit_char); // minute
+
+    u8g2.sendBuffer(); // transfer internal memory to the display
   }
-  delay(10);
+
+  delay(100);
 }
 
 void configModeCallback (WiFiManager *myWiFiManager) {
@@ -212,40 +201,6 @@ void configModeCallback (WiFiManager *myWiFiManager) {
   Serial.println("Please connect to AP");
   Serial.println(myWiFiManager->getConfigPortalSSID());
   Serial.println("To setup Wifi Configuration");
-  printText("config");
-}
-
-void scrollText(String text) {
-  uint8_t charWidth;
-  uint8_t cBuf[8];  // this should be ok for all built-in fonts
-
-  if (WEBSERVER_ENABLED) {
-    server.handleClient();
-  }
-}
-
-void printText(int16_t startCol, String text) {
-  int16_t col = (MAX_DEVICES * COL_SIZE) - 1;
-  int8_t charWidth = 8;
-  uint8_t cBuf[8];  // this should be ok for all built-in fonts
-
-  // if the startColumn is not bigger then the maximum available columns, start there
-  if (startCol <= col) {
-    col = startCol;
-  }
-
-}
-
-void printText(String text) {
-  printText((MAX_DEVICES * COL_SIZE) - 1, text);
-}
-
-void centerText(String text) {
-  int16_t maxCol = (MAX_DEVICES * COL_SIZE) - 1;
-  uint8_t cBuf[8];  // this should be ok for all built-in fonts
-  int8_t charWidth = 8;
-  int8_t textWidth = 0;
-
 }
 
 void flashLED(int count, int delayTime) {
@@ -281,14 +236,6 @@ boolean authentication() {
 void handleRoot() {
   if (server.method() == HTTP_POST) {
     redirectHome();
-    for (uint8_t i = 0; i < server.args(); i++) {
-      if (server.argName(i) == "message") {
-        message = server.arg(i);
-        newMessageAvailable = true;
-      } else if (server.argName(i) == "animation") {
-        animation = server.arg(i).toInt();
-      }
-    }
   } else {
   if (!authentication()) {
     return server.requestAuthentication();
@@ -302,30 +249,7 @@ void handleRoot() {
     sendHeader();
 
     String html = "<h1>Welcome to the Dot Matrix Clock</h1>\n";
-    html += "<form action='/' method='POST'>\n";
-    html += "  <div class='form-group'>\n";
-    html += "    <label for='scrollText'>Scroll message:</label><br />\n";
-    html += "    <input id='scrollText' type='text' class='form-control' name='message' value='' maxlength='60' placeholder='Text to scroll'>\n";
-    html += "    <button type='submit'  class='btn btn-primary' name='submit'>Send</button>\n";
-    html += "  </div>";
-    html += "</form><br />\n";
-    html += "<form action='/' method='POST'>\n";
-    html += "  <div class='form-group'>\n";
-    html += "    <label id='animationSelect'>Animation:</label>\n";
-    html += "    <select class='form-control' id='animationSelect' name='animation'>\n";
-    html += "      <option value='1'>Bullseye</option>\n";
-    html += "      <option value='2'>Jumping dot</option>\n";
-    html += "      <option value='3'>Cross</option>\n";
-    html += "      <option value='4'>Diagonal</option>\n";
-    html += "      <option value='5'>Spiral</option>\n";
-    html += "      <option value='6'>Up-Down</option>\n";
-    html += "      <option value='7'>Left-Right</option>\n";
-    html += "      <option value='8'>Chessboard</option>\n";
-    html += "      <option value='9'>:-)</option>\n";
-    html += "    </select>\n";
-    html += "    <button type='submit'  class='btn btn-primary' name='submit'>Send</button>\n";
-    html += "  </div>";
-    html += "</form>\n";
+    html += "Nothing here.. Go to configuration tab...";
     server.sendContent(html);
 
     sendFooter();
@@ -352,11 +276,8 @@ void handleConfigure() {
   html += "<form action='/saveconfig' method='GET'>\n";
   html += "  <h5>Brightness settings</h5>\n";
   html += "  <label for='intensity_clock' class='form-label'>Clock brightness</label>\n";
-  html += "  <input type='range' class='form-range' min='0' max='15' value='" + String(INTENSITY_CLOCK) + "' id='intensity_clock' name='intensity_clock'>\n";
+  html += "  <input type='range' class='form-range' min='0' max='25' value='" + String(INTENSITY_CLOCK) + "' id='intensity_clock' name='intensity_clock'>\n";
   html += "  <label for='intensity_text' class='form-label'>Text brightness</label>\n";
-  html += "  <input type='range' class='form-range' min='0' max='15' value='" + String(INTENSITY_TEXT) + "' id='intensity_text' name='intensity_text'>\n";
-  html += "  <label for='intensity_animation' class='form-label'>Animation brightness</label>\n";
-  html += "  <input type='range' class='form-range' min='0' max='15' value='" + String(INTENSITY_ANIMATION) + "' id='intensity_animation' name='intensity_animation'>\n";  
   server.sendContent(html);
 
   String isChecked = "";
@@ -402,9 +323,7 @@ void handleSaveConfig() {
     return server.requestAuthentication();
   }
 
-  INTENSITY_ANIMATION = server.arg("intensity_animation").toInt();
   INTENSITY_CLOCK = server.arg("intensity_clock").toInt();
-  INTENSITY_TEXT = server.arg("intensity_text").toInt();
   if (server.hasArg("display_ticktock")) {
     DISPLAY_SECOND_TICK = true;
   } else {
@@ -437,7 +356,6 @@ void handleForgetConfig() {
   LittleFS.remove(CONFIG);
 
   Serial.println("Config deleted.");
-  scrollText("config deleted");
 
   ESP.restart();
 }
@@ -446,8 +364,6 @@ void resetWifiConfig() {
     Serial.println("WiFi reset button pressed, will reset WiFi settings now.");
     WiFiManager wifiManager;
     wifiManager.resetSettings();
-    scrollText("WiFi settings reset");
-    printText("release");
     Serial.print("WiFi settings removed. Release button for reboot.");
 
     ESP.restart();
@@ -455,7 +371,7 @@ void resetWifiConfig() {
 
 void redirectHome() {
   // Send them back to the Root Directory
-  server.sendHeader("Location", String("/"), true);
+  server.sendHeader("Location", String("/configure"), true);
   server.sendHeader("Cache-Control", "no-cache, no-store");
   server.sendHeader("Pragma", "no-cache");
   server.sendHeader("Expires", "-1");
@@ -470,9 +386,7 @@ void writeConfig() {
     Serial.println("File open failed!");
   } else {
     Serial.println("Saving settings now...");
-    f.println("INTENSITY_ANIMATION=" + String(INTENSITY_ANIMATION));
     f.println("INTENSITY_CLOCK=" + String(INTENSITY_CLOCK));
-    f.println("INTENSITY_TEXT=" + String(INTENSITY_TEXT));
     f.println("DISPLAY_SECOND_TICK=" + String(DISPLAY_SECOND_TICK));
   }
   f.close();

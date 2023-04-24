@@ -24,15 +24,6 @@ char* www_password = "password";  // Password for the Web Interface
 
 String themeColor = "blue-grey"; // this can be changed later in the web interface.
 
-/* LED Matrix controller & settings */
-#include <MD_MAX72xx.h>
-#define BUF_SIZE      75  // text buffer size
-#define CHAR_SPACING  1   // pixels between characters
-
-// Define the number of devices we have in the chain and the hardware interface
-#define HARDWARE_TYPE MD_MAX72XX::FC16_HW
-#define MAX_DEVICES 4
-
 // Output PINs for the MAX72xx matrix display
 #define CLK_PIN   14 // CLK  or IO14 or D5
 #define DATA_PIN  13 // MOSI or IO13 or D7
@@ -53,5 +44,7 @@ boolean DISPLAY_SECOND_TICK = false; // decide if we want to have a visible seco
 int INTENSITY_CLOCK     = 0;
 int INTENSITY_TEXT      = 2;
 int INTENSITY_ANIMATION = 2;
+
+int notifyLight = LED_BUILTIN; // LED_BUILTIN is is the built in LED on the Wemos
 
 #endif
