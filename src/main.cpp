@@ -59,8 +59,8 @@ void setup() {
   u8g2.setContrast(0); // set display contrast 0-255
 
   u8g2.clearBuffer();	// clear the internal u8g2 memory
-  u8g2.setFont(u8g2_font_minuteconsole_tr);	// choose a suitable font with digits 3px wide
- 
+  u8g2.setFont(u8g2_font_minuteconsole_tr);
+
   u8g2.drawStr(16, 8, "moin");
   u8g2.sendBuffer();
 
@@ -168,7 +168,7 @@ void loop() {
     Serial.printf("Update clock: %02d:%02d\n", time_hour, time_minute); 
 
     u8g2.clearBuffer();	// clear the internal u8g2 memory
-    u8g2.setFont(u8g2_font_minuteconsole_tr);	// choose a suitable font with digits 3px wide
+    u8g2.setFont(u8g2_font_minuteconsole_tr);
     u8g2.setContrast(INTENSITY_CLOCK * 10);
     
     char digit_char[2];
@@ -202,6 +202,10 @@ void configModeCallback (WiFiManager *myWiFiManager) {
   Serial.println("Please connect to AP");
   Serial.println(myWiFiManager->getConfigPortalSSID());
   Serial.println("To setup Wifi Configuration");
+  u8g2.clearBuffer();	// clear the internal u8g2 memory
+  u8g2.setFont(u8g2_font_minuteconsole_tr);	// choose a suitable font with digits 3px wide
+  u8g2.drawStr(16, 8, "wifi");
+  u8g2.sendBuffer();
 }
 
 void flashLED(int count, int delayTime) {
