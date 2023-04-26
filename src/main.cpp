@@ -152,14 +152,6 @@ void loop() {
   time_t now = time(&now);
   localtime_r(&now, &timedate);
 
-  if (DISPLAY_SECOND_TICK && time_second != timedate.tm_sec) {
-//    mx.setPoint(0, 0, ticktack);
-//    mx.setPoint(1, 0, !ticktack);
-    ticktack = !ticktack;
-
-    time_second = timedate.tm_sec;
-  }
-
   if (WEBSERVER_ENABLED) {
     server.handleClient();
   }
@@ -167,7 +159,7 @@ void loop() {
     ArduinoOTA.handle();
   }
 
-  if (timedate.tm_min != time_minute || timedate.tm_hour != time_hour || update_matrix == true) {
+  if (timedate.tm_min != time_minute || timedate.tm_hour != time_hour || update_matrix == true || (DISPLAY_SECOND_TICK && time_second != timedate.tm_sec)) {
     update_matrix = false;
 
     time_minute = timedate.tm_min;
@@ -188,10 +180,19 @@ void loop() {
     if (time_minute < 10) { digit_char[1] = digit_char[0]; digit_char[0] = '0'; }
     u8g2.drawStr(25, 8, digit_char); // minute
 
+    if (DISPLAY_SECOND_TICK) {
+      u8g2.setDrawColor(((ticktack) ? 0 : 1));
+      u8g2.drawPixel(23, 7);
+      u8g2.setDrawColor(1);
+
+      ticktack = !ticktack;
+      time_second = timedate.tm_sec;
+    }
+
     u8g2.sendBuffer(); // transfer internal memory to the display
   }
 
-  delay(100);
+  delay(10);
 }
 
 void configModeCallback (WiFiManager *myWiFiManager) {
