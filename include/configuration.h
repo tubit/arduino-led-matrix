@@ -41,7 +41,7 @@ String themeColor = "blue-grey"; // this can be changed later in the web interfa
 #define CHAR_SPACING  1 // pixels between characters
 
 /* Time settings */
-#include <Time.h>
+#include <time.h>
 const long gmt_offset_sec = 3600;
 const int  day_light_offset_sec = 3600;
 
