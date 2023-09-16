@@ -2,7 +2,7 @@
 #include "utf8ascii.h"
 #include "effects.h"
 
-#define VERSION "1.0.0"
+#define VERSION "1.0.1"
 #define CONFIG "/config.txt"
 #define HOSTNAME "ESP-"
 
@@ -294,7 +294,7 @@ void scrollText(String text) {
       mx.transform(MD_MAX72XX::TSL);
       if (i < charWidth)
         mx.setColumn(0, cBuf[i]);
-      delay(DELAYTIME);
+      delay(SCROLL_DELAY_MS);
     }
 
     if (WEBSERVER_ENABLED) {
@@ -305,7 +305,7 @@ void scrollText(String text) {
   // fill the screen with blank to scroll the message out of the screen
   for (unsigned int idx = 0; idx < MAX_DEVICES * COL_SIZE; idx++) {
     mx.transform(MD_MAX72XX::TSL);
-    delay(DELAYTIME);
+    delay(SCROLL_DELAY_MS);
 
     if (idx % COL_SIZE == 0 && WEBSERVER_ENABLED) {
       server.handleClient();
@@ -466,6 +466,9 @@ void handleConfigure() {
   html += "  <input type='range' class='form-range' min='0' max='15' value='" + String(INTENSITY_TEXT) + "' id='intensity_text' name='intensity_text'>\n";
   html += "  <label for='intensity_animation' class='form-label'>Animation brightness</label>\n";
   html += "  <input type='range' class='form-range' min='0' max='15' value='" + String(INTENSITY_ANIMATION) + "' id='intensity_animation' name='intensity_animation'>\n";  
+  html += "  <label for='scroll_delay_ms' class='form-label'>Scroll delay in milliseconds</label>\n";
+  html += "  <input type='range' class='form-range' min='50' max='250' value='" + String(SCROLL_DELAY_MS) + "' id='scroll_delay_ms' name='scroll_delay_ms'>\n";  
+  
   server.sendContent(html);
 
   String isChecked = "";
@@ -519,6 +522,7 @@ void handleSaveConfig() {
   } else {
     DISPLAY_SECOND_TICK = false;
   }
+  SCROLL_DELAY_MS = server.arg("scroll_delay_ms").toInt();
 
   writeConfig();
 
@@ -583,6 +587,7 @@ void writeConfig() {
     f.println("INTENSITY_CLOCK=" + String(INTENSITY_CLOCK));
     f.println("INTENSITY_TEXT=" + String(INTENSITY_TEXT));
     f.println("DISPLAY_SECOND_TICK=" + String(DISPLAY_SECOND_TICK));
+    f.println("SCROLL_DELAY_MS=" + String(SCROLL_DELAY_MS));
   }
   f.close();
 
@@ -615,6 +620,10 @@ void readConfig() {
     if (line.indexOf("DISPLAY_SECOND_TICK=") >= 0) {
       DISPLAY_SECOND_TICK = line.substring(line.lastIndexOf("DISPLAY_SECOND_TICK=") + 20).toInt();
       Serial.println("DISPLAY_SECOND_TICK: " + String(DISPLAY_SECOND_TICK));
+    }
+    if (line.indexOf("SCROLL_DELAY_MS=") >= 0) {
+      SCROLL_DELAY_MS = line.substring(line.lastIndexOf("SCROLL_DELAY_MS=") + 16).toInt();
+      Serial.println("SCROLL_DELAY_MS: " + String(SCROLL_DELAY_MS));
     }
   }
   fr.close();

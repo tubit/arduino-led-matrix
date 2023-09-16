@@ -38,7 +38,6 @@ String themeColor = "blue-grey"; // this can be changed later in the web interfa
 #define DATA_PIN  13 // MOSI or IO13 or D7
 #define CS_PIN    15 // SS   or IO15 or D8 
 
-#define DELAYTIME 100   // in milliseconds
 #define CHAR_SPACING  1 // pixels between characters
 
 /* Time settings */
@@ -53,5 +52,6 @@ boolean DISPLAY_SECOND_TICK = false; // decide if we want to have a visible seco
 int INTENSITY_CLOCK     = 0;
 int INTENSITY_TEXT      = 2;
 int INTENSITY_ANIMATION = 2;
+int SCROLL_DELAY_MS     = 100;
 
 #endif
